@@ -1,98 +1,85 @@
-/* import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';*/
-import app from './App';
+import React  from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import App from './App';
+import OrderEntry from './OrderEntry';
+import ScoopOption from './ScoopOption';
 
-//import request from 'supertest';
-import { global } from 'yargs';
+test('Confirm that page Loads', async () => {
+  render(<App />);  
+  fireEvent.click(screen.getByText('Load'))
+  // Wait for page to update with query text
+  const items = await screen.findByTitle("My App")
+  expect(items).toBeInTheDocument();
 
-const request = require("supertest");
-
-
-
-describe('test App', () => {
-  beforeEach(async () => {
-    const server = await app.listen(40000);
-    global.agent = request.agent(server);
+  const thankYou = await screen.findByRole('Heading', {
+    name: /Thank You/i,
   });
-  afterEach(async () => {
-    await server.close();
-  });
-  describe('ice cream flavors', () => {
-    test('responds with status 200 the GET method', () => {
-        return request(server)
-          .get('/scoops')
-          .then((response: { statuCode: any; }) => {
-            expect(response.statuCode).toBe(200);
-          });
-    });
+  expect(thankYou).toBeInTheDocument();
 
-    test('response has expected number of ice cream flavors, and each has a name and image', () => {
-      return request(server)
-        .get('/scoops')
-        .then((response: { body: any[]; }) => {
-          expect(response.body.length).toBe(4);
-          response.body.forEach((flavor: { name: any; imagePath: any; }) => {
-            expect(typeof flavor.name).toBe('string');
-            expect(typeof flavor.imagePath).toBe('string');
-          });
-        });
-    });
-  });
-  describe('toppings', () => {
-    test('responds with status 200 the GET menthod', () => {
-      return request(server)
-        .get('/toppings')
-        .then((response: { body: any[]; }) => {
-          expect(response.body.length).toBe(6);
-          response.body.forEach((topping: { name: any; imagePath: any; }) => {
-            expect(typeof topping.name).toBe('string');
-            expect(typeof topping.imagePath).toBe('string');
-          });
-        });
-    });
-  });
-  describe('order number generator', () => {
-    test('returns 201 for POST', () => {
-      return request(app)
-        .post('/order')
-        .then((response: { statusCode: any; }) => {
-          expect(response.statusCode).toBe(201);
-        });
-    });
-    test('returns random "order number" for POST', () => {
-      return request(app)
-        .post("/order")
-        .then((response: { body: { orderNumber: any; }; }) => {
-          const orderNumber = response.body.orderNumber;
-          expect(orderNumber).toBeLessThan(100000000000);
-          expect(orderNumber).toBeGreaterThan(0);
-        });
-    });
-  });
+  // expect that loading diappear 
+
+  const disappear = screen.queryByText('loading');
+  expect(disappear).not.toBeInTheDocument();
+
+});
+
+test('add toppings', async () => {
+  render(<App />);
+
+  const vanilla = await screen.findByRole('spinbutton', { name:'Vanilla'  });
+  userEvent.clear(vanilla);
+  userEvent.type(vanilla, '1');
+
+  const chocolate = screen.getByRole('spinbutton', {name: 'Chocolate'});
+  userEvent.clear(chocolate);
+  userEvent.type(chocolate, '2');
+
+  const cherries = await screen.findByRole('checkbox', { name: 'Cherries'});
+  userEvent.click(cherries);
+ 
+});
+
+test('Disable order button if there are no scoops ordered', async () => {
+  render(<OrderEntry setOrderPhase={jest.fn()}/>);
+
+  let orderButton = screen.getByRole('button', {name: 'order sundae'});
+  expect(orderButton).toBeDisabled();
+
+  const vanillaInput = await screen.findByRole('spinbutton', { name: 'Vanilla'});
+  userEvent.clear(vanillaInput);
+  userEvent.type(vanillaInput, '1');
+  expect(orderButton).toBeEnabled();
+
+  userEvent.clear(vanillaInput);
+  userEvent.type(vanillaInput, '0');
+  expect(orderButton).toBeDisabled();
+
+});
+
+test.only('indecate if scoop count is non-int or out of range', async () => {
+  render(<ScoopOption name="" imagePath="" updateItemCount={jest.fn()} />);
+
+  const vanillaInput = screen.getByRole('spinbutton');
+  userEvent.clear(vanillaInput);
+  userEvent.type(vanillaInput, '-1');
+  expect(vanillaInput).toHaveClass('is-invalid');
+
+  userEvent.clear(vanillaInput);
+  userEvent.type(vanillaInput, '2.5');
+  expect(vanillaInput).toHaveClass('is-invalid');
+
+  userEvent.clear(vanillaInput);
+  userEvent.type(vanillaInput, '11');
+  expect(vanillaInput).toHaveClass('is-invalid');
+
+  userEvent.clear(vanillaInput);
+  userEvent.type(vanillaInput, '3');
+  expect(vanillaInput).not.toHaveClass('is-invalid');
 });
 
 
-function server(server: any) {
+
+function vanillaInput(vanillaInput: any) {
   throw new Error('Function not implemented.');
 }
-/* test('button has correct initial color', () => {
-  render(<App/>);
-
-  //find an element with a role of button and text of 'Change to blue'
-  const colorButton = screen.getByRole('button', { name: 'Change to blue'});
-
-  //expect the background color to be red
-  expect(colorButton).toHaveStyle({ backgroundColor: 'red' });
-
-  // click button
-  fireEvent.click(colorButton);
-
-  // expect the background color to be blue
-  expect(colorButton).toHaveStyle({ backgroundColor: 'blue'});
-
-  //expect the button text to be 'Change to red'
-  expect(colorButton.textContent).toBe('Change to red');
-}); */
-
-
-
